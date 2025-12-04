@@ -29,16 +29,14 @@ fn max_joltage_for_array(digits: &[usize], carry: usize, pick: u32) -> usize {
         .reduce(|(acc_i, acc_v), (i, v)| if v > acc_v { (i, v) } else { (acc_i, acc_v) })
         .unwrap();
 
+    let new_carry = carry + (best_value * 10_usize.pow(pick - 1));
+
     if pick == 1 {
         // if we only wanted to pick one, trivially return here
-        carry + best_value
+        new_carry
     } else {
         // otherwise, add to the carry and pick the next `pick - 1` digits
-        max_joltage_for_array(
-            &digits[best_index + 1..],
-            carry + (best_value * 10_usize.pow(pick - 1)),
-            pick - 1,
-        )
+        max_joltage_for_array(&digits[best_index + 1..], new_carry, pick - 1)
     }
 }
 
