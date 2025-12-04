@@ -35,7 +35,7 @@ fn max_joltage_for_array(digits: &[usize], carry: usize, pick: u32) -> usize {
         // if we only wanted to pick one, trivially return here
         new_carry
     } else {
-        // otherwise, add to the carry and pick the next `pick - 1` digits
+        // otherwise, pick the next `pick - 1` digits
         max_joltage_for_array(&digits[best_index + 1..], new_carry, pick - 1)
     }
 }
