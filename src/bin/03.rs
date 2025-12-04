@@ -25,7 +25,7 @@ fn max_joltage_for_array(digits: &[usize], carry: usize, pick: u32) -> usize {
     let (best_index, best_value) = digits
         .iter()
         .enumerate()
-        .take(digits.len() - (pick as usize - 1)) // we can't pick the last digit as our first digit!
+        .take(digits.len() - (pick as usize - 1))
         .reduce(|(acc_i, acc_v), (i, v)| if v > acc_v { (i, v) } else { (acc_i, acc_v) })
         .unwrap();
 
