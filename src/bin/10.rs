@@ -1,3 +1,6 @@
+use good_lp::{
+    Constraint, Expression, ProblemVariables, Solution, SolverModel, constraint, microlp, variable,
+};
 use std::collections::HashSet;
 
 advent_of_code::solution!(10);
@@ -21,10 +24,9 @@ pub fn part_two(input: &str) -> Option<usize> {
 
     let mut sum = 0;
     for problem in problems {
-        sum += fewest_presses_for_joltages(&problem, 0, HashSet::from([vec![0; problem.3.len()]]));
+        sum += fewest_presses_for_joltages_lp(&problem);
     }
 
-    // 17599824 is too high
     Some(sum)
 }
 
@@ -44,35 +46,55 @@ fn fewest_presses_for_lights(problem: &Problem, presses: usize, current: HashSet
 }
 
 // possible solution is to represent the joltages in base-n
-fn fewest_presses_for_joltages(
-    problem: &Problem,
-    presses: usize,
-    current: HashSet<Vec<usize>>,
-) -> usize {
-    let target = &problem.3;
+fn fewest_presses_for_joltages_lp(problem: &Problem) -> usize {
+    let (_, _, switch_list, joltages) = problem;
 
-    if current.contains(target) {
-        return presses;
-    }
+    let mut problem = ProblemVariables::new();
 
-    let new = current
+    let mut joltage_affected_by = joltages
         .iter()
-        .flat_map(|curr| {
-            problem.2.iter().map(move |adder| {
-                let mut new = curr.clone();
+        .map(|target| (*target, Vec::new()))
+        .collect::<Vec<(usize, Vec<usize>)>>();
+    let mut total_clicks: Expression = 0.into();
+    let switch_clicks_counts = switch_list
+        .iter()
+        .enumerate()
+        .map(|(i, switches)| {
+            // which joltages are affected by these switches being clicked
+            switches
+                .iter()
+                .for_each(|s| joltage_affected_by.get_mut(*s as usize).unwrap().1.push(i));
 
-                // dbg!(curr, adder);
-                for indx in adder {
-                    new[*indx] += 1;
-                }
-
-                new
-            })
+            // and handle clicking this as a variable
+            let clicks = problem.add(variable().min(0).initial(0).integer());
+            total_clicks += clicks;
+            clicks
         })
-        .filter(|x| !x.iter().enumerate().any(|(i, &el)| el > target[i]))
-        .collect::<HashSet<Vec<usize>>>();
+        .collect::<Vec<_>>();
 
-    fewest_presses_for_joltages(&problem, presses + 1, new)
+    let constraints = joltage_affected_by
+        .iter()
+        .map(|(target, switches_affected_by)| {
+            let sum: Expression = switches_affected_by
+                .iter()
+                .filter_map(|i| switch_clicks_counts.get(*i))
+                .fold(Expression::from(0), |acc, &var| acc + var);
+            constraint!(sum == *target as i32)
+        })
+        .collect::<Vec<Constraint>>();
+
+    let solution = problem
+        .minimise(total_clicks)
+        .using(microlp)
+        .with_all(constraints)
+        .solve()
+        .unwrap();
+
+    switch_clicks_counts
+        .iter()
+        // add 0.1 to avoid truncation issues for floating point "ints" that would truncate downwards
+        .map(|x| (solution.value(x.clone()) + 0.1) as usize)
+        .sum()
 }
 
 fn parse_line(line: &str) -> Problem {
@@ -92,7 +114,6 @@ fn parse_line(line: &str) -> Problem {
         .map(|(i, d)| d * 2_usize.pow(i as u32))
         .sum::<usize>();
 
-    // represented as binary numbers
     let switches = chars
         .by_ref()
         .skip(1)
@@ -139,6 +160,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(33));
+        assert_eq!(result, Some(333));
     }
 }
