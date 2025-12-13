@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 advent_of_code::solution!(8);
 
@@ -6,9 +6,9 @@ type Coordinate = Vec<usize>;
 
 pub fn part_one(input: &str) -> Option<usize> {
     #[cfg(test)]
-    let connections = 10;
+    let num_connections = 10;
     #[cfg(not(test))]
-    let connections = 1000;
+    let num_connections = 1000;
 
     let coords = input
         .lines()
@@ -35,78 +35,62 @@ pub fn part_one(input: &str) -> Option<usize> {
 
     distances.sort_by(|(_, a_dist), (_, b_dist)| a_dist.total_cmp(b_dist));
 
-    let mut circuits: Vec<HashSet<usize>> = vec![];
-    for ((a, b), _) in distances.iter().take(connections) {
-        let existing = circuits
+    let mut connections: HashMap<usize, Vec<usize>> =
+        distances
             .iter()
-            .enumerate()
-            .find(|(_, x)| x.contains(a) || x.contains(b));
+            .take(num_connections)
+            .fold(HashMap::new(), |mut acc, ((i, j), _)| {
+                acc.entry(*i).or_insert(Vec::new()).push(*j);
+                acc.entry(*j).or_insert(Vec::new()).push(*i);
+                acc
+            });
 
-        println!(
-            "trying to add {} -> {} and {} -> {}",
-            a,
-            coords
-                .get(*a)
-                .unwrap()
-                .iter()
-                .map(|x| format!("{}, ", x.to_string()))
-                .collect::<String>(),
-            b,
-            coords
-                .get(*b)
-                .unwrap()
-                .iter()
-                .map(|x| format!("{}, ", x.to_string()))
-                .collect::<String>()
-        );
-
-        println!();
-        if let Some((pos, circuit)) = existing {
-            let mut new_circuit = circuit.clone();
-            new_circuit.insert(*a);
-            new_circuit.insert(*b);
-
-            circuits[pos] = new_circuit;
-        } else {
-            circuits.push(HashSet::from([*a, *b]));
+    let all_positions = connections.keys().map(|x| x.to_owned()).collect::<Vec<_>>();
+    let mut seen_positions: HashSet<usize> = HashSet::new();
+    let mut all_pools = Vec::new();
+    for position in all_positions {
+        if seen_positions.contains(&position) {
+            continue;
         }
+
+        let pool = flood(position, &connections);
+
+        seen_positions.extend(&pool);
+        all_pools.push(pool);
     }
 
-    let merged_circuits = circuits
-        .iter()
-        .enumerate()
-        .map(|(i, a)| {
-            circuits.iter().skip(i).fold(a.clone(), |acc, b| {
-                let union = b.union(&acc).map(|x| *x).collect::<HashSet<usize>>();
+    let mut pool_sizes = all_pools.iter().map(|x| x.len()).collect::<Vec<usize>>();
+    pool_sizes.sort();
 
-                if union.len() < a.len() + b.len() {
-                    // there's some intersection, so use the merged
-                    union
-                } else {
-                    acc
-                }
-            })
-        })
-        .map(|x| x.clone())
-        .collect::<Vec<HashSet<usize>>>();
+    let skip = pool_sizes.len() - 3;
+    let largest = pool_sizes.into_iter().skip(skip).collect::<Vec<usize>>();
 
-    let mut merged_sizes = merged_circuits
-        .iter()
-        .map(|x| x.len())
-        .collect::<Vec<usize>>();
-    merged_sizes.sort();
-
-    dbg!(&merged_sizes);
-
-    let skip = merged_sizes.len() - 3;
-    let largest = merged_sizes.into_iter().skip(skip).collect::<Vec<usize>>();
-
-    dbg!(&largest);
-
-    // not 5780... too low?
     largest.into_iter().reduce(|a, b| a * b)
 }
 
+fn flood(from: usize, connections: &HashMap<usize, Vec<usize>>) -> HashSet<usize> {
+    let mut pool = HashSet::from([from]);
+    let mut wave = vec![from];
+    while wave.len() > 0 {
+        let next_wave: Vec<usize> = wave
+            .iter()
+            .flat_map(|pos| {
+                connections
+                    .get(pos)
+                    .unwrap()
+                    .iter()
+                    .filter(|n| !pool.contains(n))
+            })
+            .map(|x| x.to_owned())
+            .collect();
+
+        pool.extend(next_wave.clone());
+
+        wave = next_wave;
+    }
+
+    pool
+}
 pub fn part_two(_input: &str) -> Option<usize> {
     None
 }
