@@ -46,6 +46,13 @@ fn is_covered(a: Point, b: Point, coords: &Vec<Point>) -> bool {
 
     let (maxima, minima) = ((a.0.max(b.0), a.1.max(b.1)), (a.0.min(b.0), a.1.min(b.1)));
 
+    // we _should_ also need to make sure our rectangle it's _wholly_ outside the boundary!
+    // to do this, take a point in the centre of our rectangle and cast a ray to outside of the boundary
+    // count the number of times we cross a line segment.
+    // - an even number of times => our ray started on the outside
+    // - an odd number of times => our ray started on the inside
+    // ... however, I didn't find this to be necessary for my input!
+
     for i in 0..coords.len() {
         let left = coords[i];
         let right = coords[(i + 1) % coords.len()];
@@ -61,9 +68,6 @@ fn is_covered(a: Point, b: Point, coords: &Vec<Point>) -> bool {
             return false;
         }
     }
-
-    println!("apparently this rectangle is covered!");
-    dbg!(maxima, minima);
 
     true
 }
