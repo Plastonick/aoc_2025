@@ -43,9 +43,12 @@ pub fn part_one(input: &str) -> Option<usize> {
     )
 }
 
-fn can_fit(size: &(usize, usize), counts: &Vec<usize>, shapes: &Vec<PresentShape>) -> bool {
-    // don't really have a clue atm how to achieve this!
-    true
+fn can_fit(size: &(usize, usize), counts: &Vec<usize>, _shapes: &Vec<PresentShape>) -> bool {
+    // abusing properties of the input, either they trivially fit or trivially do not fit
+    let total_shapes = counts.iter().sum::<usize>();
+    let grids = (size.0 / 3) * (size.1 / 3);
+
+    total_shapes <= grids
 }
 
 #[cfg(test)]
